@@ -1,0 +1,22 @@
+# Paths for Google Colab after mounting Google Drive at /content/drive.
+# The repository is expected to run from /content/CI-Project.
+
+raw_mayo_dir: /content/drive/MyDrive/LM_INFORMATICA/COMPUTATIONAL_IMAGING/Mayo
+train_dir: /content/drive/MyDrive/LM_INFORMATICA/COMPUTATIONAL_IMAGING/Mayo/train
+test_dir: /content/drive/MyDrive/LM_INFORMATICA/COMPUTATIONAL_IMAGING/Mayo/test
+
+derived_root: /content/drive/MyDrive/LM_INFORMATICA/COMPUTATIONAL_IMAGING/derived
+processed_dir: /content/drive/MyDrive/LM_INFORMATICA/COMPUTATIONAL_IMAGING/derived/processed
+degraded_dir: /content/drive/MyDrive/LM_INFORMATICA/COMPUTATIONAL_IMAGING/derived/degraded
+
+checkpoint_dir: /content/drive/MyDrive/LM_INFORMATICA/COMPUTATIONAL_IMAGING/checkpoints
+unet_checkpoint_dir: /content/drive/MyDrive/LM_INFORMATICA/COMPUTATIONAL_IMAGING/checkpoints/unet
+diffpir_checkpoint_dir: /content/drive/MyDrive/LM_INFORMATICA/COMPUTATIONAL_IMAGING/checkpoints/diffpir
+
+external_dir: /content/drive/MyDrive/LM_INFORMATICA/COMPUTATIONAL_IMAGING/external
+diffpir_external_dir: /content/drive/MyDrive/LM_INFORMATICA/COMPUTATIONAL_IMAGING/external/diffpir
+
+output_dir: /content/drive/MyDrive/LM_INFORMATICA/COMPUTATIONAL_IMAGING/outputs
+figures_dir: /content/drive/MyDrive/LM_INFORMATICA/COMPUTATIONAL_IMAGING/outputs/figures
+metrics_dir: /content/drive/MyDrive/LM_INFORMATICA/COMPUTATIONAL_IMAGING/outputs/metrics
+reconstructions_dir: /content/drive/MyDrive/LM_INFORMATICA/COMPUTATIONAL_IMAGING/outputs/reconstructions

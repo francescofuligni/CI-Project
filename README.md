@@ -60,3 +60,9 @@ After placing the dataset in `../Mayo`, verify the structure with:
 ```bash
 python3 scripts/inspect_dataset.py
 ```
+
+On Colab, after mounting Google Drive and cloning the repository, use:
+
+```bash
+python scripts/inspect_dataset.py --paths configs/paths_colab.yaml
+```
