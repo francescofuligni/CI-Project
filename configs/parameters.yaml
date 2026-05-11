@@ -1,0 +1,26 @@
+seed: 42
+
+image:
+  size: 256
+  normalization: minmax
+
+ct:
+  angles: [180, 90, 60, 45]
+  noise_level: 0.005
+
+split:
+  train: 0.7
+  val: 0.15
+  test: 0.15
+
+methods:
+  tpv:
+    p_values: [0.1, 0.5]
+  unet:
+    enabled: true
+  diffpir:
+    enabled: true
+  hybrid_pdnet:
+    enabled: false
+    reason: excluded for two-student group according to project specifications
+

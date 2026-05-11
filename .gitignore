@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Local data and heavy artifacts
+data/
+checkpoints/
+external/
+
+# Generated artifacts
+outputs/figures/*
+outputs/metrics/*
+outputs/reconstructions/*
+!outputs/figures/.gitkeep
+!outputs/metrics/.gitkeep
+!outputs/reconstructions/.gitkeep
+
+# System and editor files
+.DS_Store
+.idea/
+.vscode/

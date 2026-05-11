@@ -1,0 +1,8 @@
+# Local paths are machine-specific. Keep large files outside Git.
+data_root: ../data
+raw_mayo_dir: ../data/mayo/raw
+processed_dir: ../data/mayo/processed
+degraded_dir: ../data/mayo/degraded
+checkpoint_dir: ../checkpoints
+external_dir: ../external
+output_dir: outputs
