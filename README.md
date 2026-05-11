@@ -31,3 +31,32 @@ docs/      Project notes, source tracking, and presentation planning.
 ```
 
 Large data, trained checkpoints, external repositories, and generated outputs are not tracked by Git.
+
+## External Layout
+
+The local project folder is expected to have this structure:
+
+```text
+Progetto/
+├── CI-Project/      # this repository
+├── Mayo/            # original Mayo dataset, outside Git
+│   ├── train/
+│   └── test/
+├── derived/         # generated processed/degraded data, outside Git
+├── checkpoints/     # trained model weights, outside Git
+└── external/        # optional external code, outside Git
+```
+
+The current Mayo dataset is already split into `train/` and `test/`. The test
+patient is `C081`; a validation subset will be created from the training set.
+
+All filesystem paths are configured in `configs/paths.yaml`. The code should not
+hardcode dataset paths.
+
+## First Check
+
+After placing the dataset in `../Mayo`, verify the structure with:
+
+```bash
+python3 scripts/inspect_dataset.py
+```

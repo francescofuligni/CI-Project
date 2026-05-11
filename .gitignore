@@ -12,6 +12,8 @@ env/
 
 # Local data and heavy artifacts
 data/
+Mayo/
+derived/
 checkpoints/
 external/
 

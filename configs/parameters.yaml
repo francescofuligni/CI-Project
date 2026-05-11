@@ -9,9 +9,9 @@ ct:
   noise_level: 0.005
 
 split:
-  train: 0.7
-  val: 0.15
-  test: 0.15
+  source: provided_train_test_folders
+  validation_from_train: 0.15
+  test_patient: C081
 
 methods:
   tpv:
@@ -23,4 +23,3 @@ methods:
   hybrid_pdnet:
     enabled: false
     reason: excluded for two-student group according to project specifications
-
