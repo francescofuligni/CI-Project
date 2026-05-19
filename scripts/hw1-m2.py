@@ -278,6 +278,27 @@ def print_model_summary(models: dict[str, nn.Module]) -> None:
         print(f"{name}: {n_params} trainable parameters")
 
 
+# ---------------------------------------------------------------------------
+# Part 3: Training Procedure
+# ---------------------------------------------------------------------------
+
+
+def train_model(model, train_loader, K, weights_path, device, num_epochs=20, noise_level=0.01, lr=1e-3):
+    model = model.to(device)
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+    loss_fn = nn.MSELoss()
+    history = []
+
+    # TODO: complete the training procedure.
+
+    return history
+
+
+# TODO:
+# Train the models you implemented, save their weights, plot the
+# training curves, and reload the weights before evaluation.
+
+
 def main() -> None:
     args = parse_args()
     paths = load_yaml(resolve_from_root(args.paths))
