@@ -45,6 +45,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--kernel-size", type=int, default=15)
     parser.add_argument("--motion-angle", type=float, default=30.0)
     parser.add_argument("--noise-level", type=float, default=0.02)
+    parser.add_argument("--num-epochs", type=int, default=20)
+    parser.add_argument("--learning-rate", type=float, default=1e-3)
     return parser.parse_args()
 
 
@@ -289,14 +291,92 @@ def train_model(model, train_loader, K, weights_path, device, num_epochs=20, noi
     loss_fn = nn.MSELoss()
     history = []
 
-    # TODO: complete the training procedure.
+    for epoch in range(num_epochs):
+        model.train()
+        running_loss = 0.0
+        num_samples = 0
+
+        progress_bar = tqdm(train_loader, desc=f"Epoch {epoch + 1}/{num_epochs}")
+        for clean in progress_bar:
+            clean = clean.to(device)
+            corrupted = add_gaussian_noise(K(clean), noise_level)
+
+            optimizer.zero_grad()
+            reconstruction = model(corrupted)
+            loss = loss_fn(reconstruction, clean)
+            loss.backward()
+            optimizer.step()
+
+            batch_size = clean.shape[0]
+            running_loss += loss.item() * batch_size
+            num_samples += batch_size
+            progress_bar.set_postfix(loss=running_loss / num_samples)
+
+        epoch_loss = running_loss / num_samples
+        history.append(epoch_loss)
+
+    weights_path = Path(weights_path)
+    weights_path.parent.mkdir(parents=True, exist_ok=True)
+    torch.save(model.state_dict(), weights_path)
 
     return history
 
 
-# TODO:
-# Train the models you implemented, save their weights, plot the
-# training curves, and reload the weights before evaluation.
+def save_training_curves(histories: dict[str, list[float]], output_path: Path) -> None:
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    fig, ax = plt.subplots(figsize=(6, 4), constrained_layout=True)
+    for model_name, history in histories.items():
+        epochs = range(1, len(history) + 1)
+        ax.plot(epochs, history, marker="o", label=model_name)
+
+    ax.set_xlabel("Epoch")
+    ax.set_ylabel("Training MSE")
+    ax.set_title("Training curves")
+    ax.grid(True, alpha=0.3)
+    ax.legend()
+    fig.savefig(output_path, dpi=150)
+    plt.close(fig)
+
+
+def train_reconstruction_models(
+    models: dict[str, nn.Module],
+    train_loader: DataLoader,
+    K,
+    device: torch.device,
+    weights_dir: Path,
+    figures_dir: Path,
+    num_epochs: int,
+    noise_level: float,
+    lr: float,
+) -> dict[str, list[float]]:
+    histories = {}
+
+    print()
+    print("Part 3: Training Procedure")
+    for model_name, model in models.items():
+        weights_path = weights_dir / f"hw1-m2_{model_name}.pt"
+        print(f"Training {model_name}")
+        history = train_model(
+            model=model,
+            train_loader=train_loader,
+            K=K,
+            weights_path=weights_path,
+            device=device,
+            num_epochs=num_epochs,
+            noise_level=noise_level,
+            lr=lr,
+        )
+        model.load_state_dict(torch.load(weights_path, map_location=device))
+        model.eval()
+        histories[model_name] = history
+        print(f"Saved and reloaded weights: {weights_path}")
+
+    curves_path = figures_dir / "hw1-m2_training_curves.png"
+    save_training_curves(histories, curves_path)
+    print(f"Saved training curves: {curves_path}")
+
+    return histories
 
 
 def main() -> None:
@@ -336,6 +416,18 @@ def main() -> None:
 
     models = build_reconstruction_models()
     print_model_summary(models)
+
+    train_reconstruction_models(
+        models=models,
+        train_loader=train_loader,
+        K=K,
+        device=device,
+        weights_dir=weights_dir,
+        figures_dir=resolve_from_root(paths["figures_dir"]),
+        num_epochs=args.num_epochs,
+        noise_level=args.noise_level,
+        lr=args.learning_rate,
+    )
 
 
 if __name__ == "__main__":
