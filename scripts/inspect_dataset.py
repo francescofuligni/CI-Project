@@ -7,6 +7,7 @@ from pathlib import Path
 
 sys.path.append(str(Path(__file__).resolve().parents[1] / "src"))
 
+# pyrefly: ignore [missing-import]
 from utils import load_yaml, repo_root, resolve_from_root
 
 
