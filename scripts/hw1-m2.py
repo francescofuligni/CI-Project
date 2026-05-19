@@ -1,3 +1,4 @@
+# pyrefly: ignore [invalid-syntax]
 from __future__ import annotations
 
 import argparse
@@ -14,6 +15,8 @@ import torch
 from PIL import Image
 # pyrefly: ignore [missing-import]
 from torch import nn
+# pyrefly: ignore [missing-import]
+from torch.nn import functional as F
 # pyrefly: ignore [missing-import]
 from torch.utils.data import DataLoader, Dataset
 # pyrefly: ignore [missing-import]
@@ -148,6 +151,133 @@ def save_clean_corrupted_pair(
     plt.close(fig)
 
 
+# ---------------------------------------------------------------------------
+# Part 2: Reconstruction Networks
+# ---------------------------------------------------------------------------
+
+
+class SimpleCNN(nn.Module):
+    def __init__(self, in_ch, out_ch, n_filters, kernel_size=3):
+        super().__init__()
+
+        self.conv1 = nn.Conv2d(in_channels=in_ch, out_channels=n_filters, kernel_size=kernel_size, padding="same")
+        self.conv2 = nn.Conv2d(in_channels=n_filters, out_channels=n_filters, kernel_size=kernel_size, padding="same")
+        self.conv3 = nn.Conv2d(in_channels=n_filters, out_channels=out_ch, kernel_size=kernel_size, padding="same")
+
+        self.relu = nn.ReLU()
+
+    def forward(self, x):
+        h = self.relu(self.conv1(x))
+        h = self.relu(self.conv2(h))
+        out = self.conv3(h)
+        return out
+
+
+class ResCNN(nn.Module):
+    def __init__(self, in_ch, out_ch, n_filters, kernel_size=3):
+        super().__init__()
+
+        self.conv1 = nn.Conv2d(in_channels=in_ch, out_channels=n_filters, kernel_size=kernel_size, padding="same")
+        self.conv2 = nn.Conv2d(in_channels=n_filters, out_channels=n_filters, kernel_size=kernel_size, padding="same")
+        self.conv3 = nn.Conv2d(in_channels=n_filters, out_channels=out_ch, kernel_size=kernel_size, padding="same")
+
+        self.relu = nn.ReLU()
+        self.tanh = nn.Tanh()
+
+    def forward(self, x):
+        h = self.relu(self.conv1(x))
+        h = self.relu(self.conv2(h))
+        out = self.tanh(self.conv3(h))
+        return out + x
+
+
+# ---------------------------------------------------------------------------
+# Optional: UNet implementation
+# ---------------------------------------------------------------------------
+
+
+class DoubleConv(nn.Module):
+    def __init__(self, in_ch, out_ch):
+        super().__init__()
+        self.block = nn.Sequential(
+            nn.Conv2d(in_ch, out_ch, kernel_size=3, padding=1),
+            nn.ReLU(),
+            nn.Conv2d(out_ch, out_ch, kernel_size=3, padding=1),
+            nn.ReLU(),
+        )
+
+    def forward(self, x):
+        return self.block(x)
+
+
+class DownBlock(nn.Module):
+    def __init__(self, in_ch, out_ch, block_cls=DoubleConv):
+        super().__init__()
+        self.pool = nn.MaxPool2d(2)
+        self.block = block_cls(in_ch, out_ch)
+
+    def forward(self, x):
+        return self.block(self.pool(x))
+
+
+class UpBlock(nn.Module):
+    def __init__(self, in_ch, skip_ch, out_ch, block_cls=DoubleConv):
+        super().__init__()
+        self.up = nn.ConvTranspose2d(in_ch, out_ch, kernel_size=2, stride=2)
+        self.block = block_cls(out_ch + skip_ch, out_ch)
+
+    def forward(self, x, skip):
+        x = self.up(x)
+        if x.shape[-2:] != skip.shape[-2:]:
+            x = F.interpolate(x, size=skip.shape[-2:], mode='bilinear', align_corners=False)
+        x = torch.cat([skip, x], dim=1)
+        return self.block(x)
+
+
+class UNet(nn.Module):
+    def __init__(self, in_ch=1, out_ch=1, base_ch=32):
+        super().__init__()
+        self.enc1 = DoubleConv(in_ch, base_ch)
+        self.enc2 = DownBlock(base_ch, 2 * base_ch)
+        self.enc3 = DownBlock(2 * base_ch, 4 * base_ch)
+        self.bottleneck = DownBlock(4 * base_ch, 8 * base_ch)
+        self.dec3 = UpBlock(8 * base_ch, 4 * base_ch, 4 * base_ch)
+        self.dec2 = UpBlock(4 * base_ch, 2 * base_ch, 2 * base_ch)
+        self.dec1 = UpBlock(2 * base_ch, base_ch, base_ch)
+        self.out_conv = nn.Conv2d(base_ch, out_ch, kernel_size=1)
+
+    def forward(self, x):
+        s1 = self.enc1(x)
+        s2 = self.enc2(s1)
+        s3 = self.enc3(s2)
+        h = self.bottleneck(s3)
+        h = self.dec3(h, s3)
+        h = self.dec2(h, s2)
+        h = self.dec1(h, s1)
+        return self.out_conv(h)
+
+
+
+def count_trainable_parameters(model: nn.Module) -> int:
+    return sum(param.numel() for param in model.parameters() if param.requires_grad)
+
+
+def build_reconstruction_models() -> dict[str, nn.Module]:
+    return {
+        "simplecnn": SimpleCNN(in_ch=1, out_ch=1, n_filters=32),
+        "rescnn": ResCNN(in_ch=1, out_ch=1, n_filters=32),
+        "unet": UNet(in_ch=1, out_ch=1, base_ch=32),
+    }
+
+
+def print_model_summary(models: dict[str, nn.Module]) -> None:
+    print()
+    print("Part 2: Reconstruction Networks")
+    for name, model in models.items():
+        n_params = count_trainable_parameters(model)
+        print(f"{name}: {n_params} trainable parameters")
+
+
 def main() -> None:
     args = parse_args()
     paths = load_yaml(resolve_from_root(args.paths))
@@ -182,6 +312,9 @@ def main() -> None:
     print(f"Motion blur:     kernel={args.kernel_size}, angle={args.motion_angle}")
     print(f"Noise level:     {args.noise_level}")
     print(f"Saved figure:    {figure_path}")
+
+    models = build_reconstruction_models()
+    print_model_summary(models)
 
 
 if __name__ == "__main__":
