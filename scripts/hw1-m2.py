@@ -2,8 +2,8 @@
 from __future__ import annotations
 
 import argparse
+import csv
 import glob
-import math
 import sys
 from pathlib import Path
 
@@ -21,6 +21,12 @@ from torch.nn import functional as F
 from torch.utils.data import DataLoader, Dataset
 # pyrefly: ignore [missing-import]
 from torchvision import transforms
+# pyrefly: ignore [missing-import]
+from skimage.metrics import (
+    mean_squared_error,
+    peak_signal_noise_ratio,
+    structural_similarity,
+)
 from tqdm.auto import tqdm
 
 sys.path.append(str(Path(__file__).resolve().parents[1] / "src"))
@@ -379,6 +385,107 @@ def train_reconstruction_models(
     return histories
 
 
+# ---------------------------------------------------------------------------
+# Part 4: Visual and Quantitative Evaluation
+# ---------------------------------------------------------------------------
+
+
+def compute_image_metrics(reconstruction: torch.Tensor, clean: torch.Tensor) -> dict[str, float]:
+    reconstruction = torch.clamp(reconstruction.detach().cpu(), 0.0, 1.0)
+    clean = torch.clamp(clean.detach().cpu(), 0.0, 1.0)
+
+    clean_image = clean.squeeze().numpy()
+    reconstruction_image = reconstruction.squeeze().numpy()
+
+    mse = mean_squared_error(clean_image, reconstruction_image)
+    psnr = peak_signal_noise_ratio(clean_image, reconstruction_image, data_range=1.0)
+    ssim = structural_similarity(clean_image, reconstruction_image, data_range=1.0)
+    return {"mse": mse, "psnr": psnr, "ssim": float(ssim)}
+
+
+def save_metrics_table(metrics: dict[str, dict[str, float]], output_path: Path) -> None:
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with output_path.open("w", newline="") as file:
+        writer = csv.writer(file)
+        writer.writerow(["model", "mse", "psnr", "ssim"])
+        for model_name, values in metrics.items():
+            writer.writerow([model_name, values["mse"], values["psnr"], values["ssim"]])
+
+
+def save_reconstruction_comparison(
+    clean: torch.Tensor,
+    corrupted: torch.Tensor,
+    reconstructions: dict[str, torch.Tensor],
+    metrics: dict[str, dict[str, float]],
+    output_path: Path,
+) -> None:
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    images = {"clean": clean, "corrupted": corrupted, **reconstructions}
+    fig, axes = plt.subplots(1, len(images), figsize=(4 * len(images), 4), constrained_layout=True)
+
+    for ax, (name, image) in zip(axes, images.items()):
+        ax.imshow(torch.clamp(image[0, 0].detach().cpu(), 0.0, 1.0), cmap="gray", vmin=0.0, vmax=1.0)
+        if name in metrics:
+            ax.set_title(
+                f"{name}\nMSE={metrics[name]['mse']:.4f}\n"
+                f"PSNR={metrics[name]['psnr']:.2f}, SSIM={metrics[name]['ssim']:.3f}"
+            )
+        else:
+            ax.set_title(name)
+        ax.axis("off")
+
+    fig.savefig(output_path, dpi=150)
+    plt.close(fig)
+
+
+@torch.no_grad()
+def evaluate_reconstruction_models(
+    models: dict[str, nn.Module],
+    test_loader: DataLoader,
+    K,
+    device: torch.device,
+    weights_dir: Path,
+    figures_dir: Path,
+    metrics_dir: Path,
+    noise_level: float,
+) -> dict[str, dict[str, float]]:
+    clean = next(iter(test_loader))[:1].to(device)
+    corrupted = add_gaussian_noise(K(clean), noise_level)
+    reconstructions = {}
+
+    metrics = {
+        "corrupted": compute_image_metrics(corrupted, clean),
+    }
+
+    print()
+    print("Part 4: Visual and Quantitative Evaluation")
+    for model_name, model in models.items():
+        weights_path = weights_dir / f"hw1-m2_{model_name}.pt"
+        model.load_state_dict(torch.load(weights_path, map_location=device))
+        model.to(device)
+        model.eval()
+
+        reconstruction = model(corrupted)
+        reconstructions[model_name] = reconstruction
+        metrics[model_name] = compute_image_metrics(reconstruction, clean)
+
+    figure_path = figures_dir / "hw1-m2_reconstruction_comparison.png"
+    metrics_path = metrics_dir / "hw1-m2_metrics.csv"
+    save_reconstruction_comparison(clean, corrupted, reconstructions, metrics, figure_path)
+    save_metrics_table(metrics, metrics_path)
+
+    for model_name, values in metrics.items():
+        print(
+            f"{model_name}: "
+            f"MSE={values['mse']:.6f}, PSNR={values['psnr']:.2f}, SSIM={values['ssim']:.4f}"
+        )
+    print(f"Saved reconstruction comparison: {figure_path}")
+    print(f"Saved metrics table:             {metrics_path}")
+
+    return metrics
+
+
 def main() -> None:
     args = parse_args()
     paths = load_yaml(resolve_from_root(args.paths))
@@ -427,6 +534,17 @@ def main() -> None:
         num_epochs=args.num_epochs,
         noise_level=args.noise_level,
         lr=args.learning_rate,
+    )
+
+    evaluate_reconstruction_models(
+        models=models,
+        test_loader=test_loader,
+        K=K,
+        device=device,
+        weights_dir=weights_dir,
+        figures_dir=resolve_from_root(paths["figures_dir"]),
+        metrics_dir=resolve_from_root(paths["metrics_dir"]),
+        noise_level=args.noise_level,
     )
 
 
