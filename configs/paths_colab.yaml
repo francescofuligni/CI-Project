@@ -15,8 +15,10 @@ diffpir_checkpoint_dir: /content/drive/MyDrive/LM_INFORMATICA/COMPUTATIONAL_IMAG
 
 external_dir: /content/drive/MyDrive/LM_INFORMATICA/COMPUTATIONAL_IMAGING/external
 diffpir_external_dir: /content/drive/MyDrive/LM_INFORMATICA/COMPUTATIONAL_IMAGING/external/diffpir
+ippy_dir: /content/drive/MyDrive/LM_INFORMATICA/COMPUTATIONAL_IMAGING/IPPy
 
 output_dir: /content/drive/MyDrive/LM_INFORMATICA/COMPUTATIONAL_IMAGING/outputs
 figures_dir: /content/drive/MyDrive/LM_INFORMATICA/COMPUTATIONAL_IMAGING/outputs/figures
 metrics_dir: /content/drive/MyDrive/LM_INFORMATICA/COMPUTATIONAL_IMAGING/outputs/metrics
 reconstructions_dir: /content/drive/MyDrive/LM_INFORMATICA/COMPUTATIONAL_IMAGING/outputs/reconstructions
+homework_weights_dir: /content/drive/MyDrive/LM_INFORMATICA/COMPUTATIONAL_IMAGING/checkpoints/hw1-m2

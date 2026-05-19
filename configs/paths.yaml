@@ -15,8 +15,10 @@ diffpir_checkpoint_dir: ../checkpoints/diffpir
 
 external_dir: ../external
 diffpir_external_dir: ../external/diffpir
+ippy_dir: ../IPPy
 
 output_dir: outputs
 figures_dir: outputs/figures
 metrics_dir: outputs/metrics
 reconstructions_dir: outputs/reconstructions
+homework_weights_dir: ../checkpoints/hw1-m2

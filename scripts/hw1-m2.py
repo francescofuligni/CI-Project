@@ -1,0 +1,188 @@
+from __future__ import annotations
+
+import argparse
+import glob
+import math
+import sys
+from pathlib import Path
+
+# pyrefly: ignore [missing-import]
+import matplotlib.pyplot as plt
+# pyrefly: ignore [missing-import]
+import torch
+# pyrefly: ignore [missing-import]
+from PIL import Image
+# pyrefly: ignore [missing-import]
+from torch import nn
+# pyrefly: ignore [missing-import]
+from torch.utils.data import DataLoader, Dataset
+# pyrefly: ignore [missing-import]
+from torchvision import transforms
+from tqdm.auto import tqdm
+
+sys.path.append(str(Path(__file__).resolve().parents[1] / "src"))
+
+# pyrefly: ignore [missing-import]
+from utils import load_yaml, resolve_from_root
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Homework 2.1: End-to-End Reconstruction Before Generative Models."
+    )
+    parser.add_argument(
+        "--paths",
+        default="configs/paths.yaml",
+        help="Path to the YAML file containing dataset and output paths.",
+    )
+    parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--data-shape", type=int, default=256)
+    parser.add_argument("--batch-size", type=int, default=8)
+    parser.add_argument("--num-workers", type=int, default=0)
+    parser.add_argument("--kernel-size", type=int, default=15)
+    parser.add_argument("--motion-angle", type=float, default=30.0)
+    parser.add_argument("--noise-level", type=float, default=0.02)
+    return parser.parse_args()
+
+
+def add_ippy_to_path(ippy_dir: Path) -> None:
+    if ippy_dir.exists():
+        sys.path.append(str(ippy_dir))
+    if ippy_dir.parent.exists():
+        sys.path.append(str(ippy_dir.parent))
+
+
+def setup_environment(paths: dict[str, str], seed: int):
+    ippy_dir = resolve_from_root(paths["ippy_dir"])
+    add_ippy_to_path(ippy_dir)
+
+    # pyrefly: ignore [missing-import]
+    from IPPy import operators, utilities
+
+    weights_dir = resolve_from_root(paths.get("homework_weights_dir", "../weights"))
+    weights_dir.mkdir(parents=True, exist_ok=True)
+
+    device = utilities.get_device()
+    torch.manual_seed(seed)
+
+    print("Homework 2.1 setup")
+    print(f"Working device:    {device}")
+    print(f"Weights directory: {weights_dir}")
+    print(f"IPPy directory:    {ippy_dir}")
+
+    return operators, utilities, device, weights_dir
+
+
+# ---------------------------------------------------------------------------
+# Part 1: Data Pipeline and Synthetic Measurements
+# ---------------------------------------------------------------------------
+
+
+class MayoDataset(Dataset):
+    def __init__(self, data_path, data_shape=256):
+        super().__init__()
+        self.fname_list = sorted(glob.glob(f"{data_path}/*/*.png"))
+        self.transform = transforms.Compose(
+            [
+                transforms.ToTensor(),
+                transforms.Resize((data_shape, data_shape), antialias=True),
+            ]
+        )
+
+    def __len__(self):
+        return len(self.fname_list)
+
+    def __getitem__(self, idx):
+        image_path = self.fname_list[idx]
+        image = Image.open(image_path).convert("L")
+        image = self.transform(image)
+        return image
+
+
+def add_gaussian_noise(image: torch.Tensor, noise_level: float) -> torch.Tensor:
+    noisy = image + noise_level * torch.randn_like(image)
+    return torch.clamp(noisy, 0.0, 1.0)
+
+
+def build_dataloaders(
+    paths: dict[str, str],
+    data_shape: int,
+    batch_size: int,
+    num_workers: int,
+):
+    train_dataset = MayoDataset(resolve_from_root(paths["train_dir"]), data_shape)
+    test_dataset = MayoDataset(resolve_from_root(paths["test_dir"]), data_shape)
+
+    train_loader = DataLoader(
+        train_dataset,
+        batch_size=batch_size,
+        shuffle=True,
+        num_workers=num_workers,
+    )
+    test_loader = DataLoader(
+        test_dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=num_workers,
+    )
+    return train_dataset, test_dataset, train_loader, test_loader
+
+
+def save_clean_corrupted_pair(
+    clean: torch.Tensor,
+    corrupted: torch.Tensor,
+    output_path: Path,
+) -> None:
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    clean_image = clean[0, 0].detach().cpu()
+    corrupted_image = corrupted[0, 0].detach().cpu()
+
+    fig, axes = plt.subplots(1, 2, figsize=(8, 4), constrained_layout=True)
+    axes[0].imshow(clean_image, cmap="gray", vmin=0.0, vmax=1.0)
+    axes[0].set_title("Clean")
+    axes[0].axis("off")
+    axes[1].imshow(corrupted_image, cmap="gray", vmin=0.0, vmax=1.0)
+    axes[1].set_title("Motion blur + noise")
+    axes[1].axis("off")
+    fig.savefig(output_path, dpi=150)
+    plt.close(fig)
+
+
+def main() -> None:
+    args = parse_args()
+    paths = load_yaml(resolve_from_root(args.paths))
+    operators, utilities, device, weights_dir = setup_environment(paths, args.seed)
+
+    train_dataset, test_dataset, train_loader, test_loader = build_dataloaders(
+        paths=paths,
+        data_shape=args.data_shape,
+        batch_size=args.batch_size,
+        num_workers=args.num_workers,
+    )
+
+    clean = next(iter(train_loader)).to(device)
+    K = operators.Blurring(
+        img_shape=(args.data_shape, args.data_shape),
+        kernel_type="motion",
+        kernel_size=args.kernel_size,
+        motion_angle=args.motion_angle,
+    )
+    corrupted = add_gaussian_noise(K(clean), args.noise_level)
+
+    figure_path = resolve_from_root(paths["figures_dir"]) / "hw1-m2_clean_corrupted.png"
+    save_clean_corrupted_pair(clean, corrupted, figure_path)
+
+    print()
+    print("Part 1: Data Pipeline and Synthetic Measurements")
+    print(f"Train images:    {len(train_dataset)}")
+    print(f"Test images:     {len(test_dataset)}")
+    print(f"Batch shape:     {tuple(clean.shape)}")
+    print(f"Clean range:     [{clean.min().item():.4f}, {clean.max().item():.4f}]")
+    print(f"Corrupted range: [{corrupted.min().item():.4f}, {corrupted.max().item():.4f}]")
+    print(f"Motion blur:     kernel={args.kernel_size}, angle={args.motion_angle}")
+    print(f"Noise level:     {args.noise_level}")
+    print(f"Saved figure:    {figure_path}")
+
+
+if __name__ == "__main__":
+    main()
