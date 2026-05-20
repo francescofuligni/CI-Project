@@ -21,4 +21,4 @@ output_dir: outputs
 figures_dir: outputs/figures
 metrics_dir: outputs/metrics
 reconstructions_dir: outputs/reconstructions
-homework_weights_dir: ../checkpoints/hw1-m2
+homework_weights_dir: ../weights/hw1-m2
