@@ -50,7 +50,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--num-workers", type=int, default=0)
     parser.add_argument("--kernel-size", type=int, default=15)
     parser.add_argument("--motion-angle", type=float, default=30.0)
-    parser.add_argument("--noise-level", type=float, default=0.02)
+    parser.add_argument("--noise-level", type=float, default=0.01)
     parser.add_argument("--num-epochs", type=int, default=20)
     parser.add_argument("--learning-rate", type=float, default=1e-3)
     return parser.parse_args()
