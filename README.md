@@ -30,7 +30,7 @@ outputs/   Generated metrics, figures, and reconstructions.
 docs/      Project notes, source tracking, and presentation planning.
 ```
 
-Large data, trained checkpoints, external repositories, and generated outputs are not tracked by Git.
+Large data, trained weights, external repositories, and generated outputs are not tracked by Git.
 
 ## External Layout
 
@@ -43,7 +43,7 @@ Progetto/
 │   ├── train/
 │   └── test/
 ├── derived/         # generated processed/degraded data, outside Git
-├── checkpoints/     # trained model weights, outside Git
+├── weights/         # trained model weights, outside Git
 └── external/        # optional external code, outside Git
 ```
 
