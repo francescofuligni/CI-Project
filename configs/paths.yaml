@@ -1,13 +1,13 @@
 # Paths are relative to the repository root.
-# Large data, derived arrays, checkpoints, and external code live outside Git.
+# Large data, processed tensors, checkpoints, and external code live outside Git.
 
 raw_mayo_dir: ../Mayo
 train_dir: ../Mayo/train
 test_dir: ../Mayo/test
 
-derived_root: ../derived
-processed_dir: ../derived/processed
-degraded_dir: ../derived/degraded
+data_root: ../data
+processed_dir: ../data/processed
+degraded_dir: ../data/processed
 
 checkpoint_dir: ../checkpoints
 unet_checkpoint_dir: ../checkpoints/unet

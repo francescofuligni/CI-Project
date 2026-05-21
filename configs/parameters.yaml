@@ -10,8 +10,9 @@ ct:
 
 split:
   source: provided_train_test_folders
-  validation_from_train: 0.15
+  use_validation_split: false
   test_patient: C081
+  note: follows course homework convention; train and test are the only generated processed splits
 
 methods:
   tpv:

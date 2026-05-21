@@ -5,9 +5,9 @@ raw_mayo_dir: /content/drive/MyDrive/LM_INFORMATICA/COMPUTATIONAL_IMAGING/Mayo
 train_dir: /content/drive/MyDrive/LM_INFORMATICA/COMPUTATIONAL_IMAGING/Mayo/train
 test_dir: /content/drive/MyDrive/LM_INFORMATICA/COMPUTATIONAL_IMAGING/Mayo/test
 
-derived_root: /content/drive/MyDrive/LM_INFORMATICA/COMPUTATIONAL_IMAGING/derived
-processed_dir: /content/drive/MyDrive/LM_INFORMATICA/COMPUTATIONAL_IMAGING/derived/processed
-degraded_dir: /content/drive/MyDrive/LM_INFORMATICA/COMPUTATIONAL_IMAGING/derived/degraded
+data_root: /content/drive/MyDrive/LM_INFORMATICA/COMPUTATIONAL_IMAGING/data
+processed_dir: /content/drive/MyDrive/LM_INFORMATICA/COMPUTATIONAL_IMAGING/data/processed
+degraded_dir: /content/drive/MyDrive/LM_INFORMATICA/COMPUTATIONAL_IMAGING/data/processed
 
 checkpoint_dir: /content/drive/MyDrive/LM_INFORMATICA/COMPUTATIONAL_IMAGING/checkpoints
 unet_checkpoint_dir: /content/drive/MyDrive/LM_INFORMATICA/COMPUTATIONAL_IMAGING/checkpoints/unet
