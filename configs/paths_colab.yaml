@@ -5,13 +5,12 @@ raw_mayo_dir: /content/drive/MyDrive/LM_INFORMATICA/COMPUTATIONAL_IMAGING/Mayo
 train_dir: /content/drive/MyDrive/LM_INFORMATICA/COMPUTATIONAL_IMAGING/Mayo/train
 test_dir: /content/drive/MyDrive/LM_INFORMATICA/COMPUTATIONAL_IMAGING/Mayo/test
 
-data_root: /content/drive/MyDrive/LM_INFORMATICA/COMPUTATIONAL_IMAGING/data
-processed_dir: /content/drive/MyDrive/LM_INFORMATICA/COMPUTATIONAL_IMAGING/data/processed
-degraded_dir: /content/drive/MyDrive/LM_INFORMATICA/COMPUTATIONAL_IMAGING/data/processed
+processed_dir: /content/drive/MyDrive/LM_INFORMATICA/COMPUTATIONAL_IMAGING/processed
+degraded_dir: /content/drive/MyDrive/LM_INFORMATICA/COMPUTATIONAL_IMAGING/processed
 
-checkpoint_dir: /content/drive/MyDrive/LM_INFORMATICA/COMPUTATIONAL_IMAGING/checkpoints
-unet_checkpoint_dir: /content/drive/MyDrive/LM_INFORMATICA/COMPUTATIONAL_IMAGING/checkpoints/unet
-diffpir_checkpoint_dir: /content/drive/MyDrive/LM_INFORMATICA/COMPUTATIONAL_IMAGING/checkpoints/diffpir
+weights_dir: /content/drive/MyDrive/LM_INFORMATICA/COMPUTATIONAL_IMAGING/weights
+unet_weights_dir: /content/drive/MyDrive/LM_INFORMATICA/COMPUTATIONAL_IMAGING/weights/unet
+diffpir_weights_dir: /content/drive/MyDrive/LM_INFORMATICA/COMPUTATIONAL_IMAGING/weights/diffpir
 
 external_dir: /content/drive/MyDrive/LM_INFORMATICA/COMPUTATIONAL_IMAGING/external
 diffpir_external_dir: /content/drive/MyDrive/LM_INFORMATICA/COMPUTATIONAL_IMAGING/external/diffpir
