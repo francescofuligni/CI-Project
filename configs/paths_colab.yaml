@@ -20,4 +20,4 @@ output_dir: /content/drive/MyDrive/LM_INFORMATICA/COMPUTATIONAL_IMAGING/outputs
 figures_dir: /content/drive/MyDrive/LM_INFORMATICA/COMPUTATIONAL_IMAGING/outputs/figures
 metrics_dir: /content/drive/MyDrive/LM_INFORMATICA/COMPUTATIONAL_IMAGING/outputs/metrics
 reconstructions_dir: /content/drive/MyDrive/LM_INFORMATICA/COMPUTATIONAL_IMAGING/outputs/reconstructions
-homework_weights_dir: /content/drive/MyDrive/LM_INFORMATICA/COMPUTATIONAL_IMAGING/weights/hw1-m2
+homework_weights_dir: /content/drive/MyDrive/LM_INFORMATICA/COMPUTATIONAL_IMAGING/weights/hw2
