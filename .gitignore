@@ -24,6 +24,16 @@ outputs/reconstructions/*
 !outputs/figures/.gitkeep
 !outputs/metrics/.gitkeep
 !outputs/reconstructions/.gitkeep
+report/build/
+report/*.aux
+report/*.bbl
+report/*.blg
+report/*.fls
+report/*.fdb_latexmk
+report/*.log
+report/*.out
+report/*.pdf
+report/*.toc
 
 # System and editor files
 .DS_Store
