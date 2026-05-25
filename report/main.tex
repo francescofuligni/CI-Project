@@ -21,11 +21,11 @@
   urlcolor=blue!60!black
 }
 
-\graphicspath{{figures/}{../outputs/tpv/}{../outputs/unet/}{../outputs/comparison/}}
+\graphicspath{{figures/}{../outputs/tpv/}{../outputs/unet/}{../outputs/diffpir/}{../outputs/comparison/}}
 
 \newcommand{\placeholder}[1]{%
   \fbox{%
-    \begin{minipage}[c][0.24\textheight][c]{0.88\linewidth}
+    \begin{minipage}[c][0.22\textheight][c]{0.88\linewidth}
       \centering
       \textbf{Figure placeholder}\\[0.5em]
       \small \texttt{\detokenize{#1}}
@@ -37,10 +37,10 @@
   \IfFileExists{#2}{\includegraphics[#1]{#2}}{\placeholder{#2}}%
 }
 
-\newcommand{\todoresult}[1]{\textcolor{red!70!black}{\textbf{TODO:} #1}}
+\newcommand{\todo}[1]{\textcolor{red!70!black}{\textbf{TODO:} #1}}
 
-\title{\textbf{Sparse-View CT Reconstruction on Mayo Data}\\
-\large Variational and Learning-Based Methods for Computational Imaging}
+\title{\textbf{Sparse-View CT Reconstruction on the Mayo Dataset}\\
+\large Variational, End-to-End, and Generative Approaches}
 \author{Group B -- Computational Imaging Project}
 \date{\today}
 
@@ -48,150 +48,301 @@
 \maketitle
 
 \begin{abstract}
-This report studies sparse-view computed tomography reconstruction as an inverse problem. The experimental pipeline uses Mayo CT slices resized to $256 \times 256$, simulates parallel-beam measurements with $180$, $90$, $60$, and $45$ projection angles, and adds relative Gaussian measurement noise with level $0.005$. The same degraded sinograms are shared by all reconstruction methods. We compare a model-based Total $p$-Variation method solved with a Chambolle--Pock primal-dual algorithm and a learned image-domain reconstruction method based on a generalized IPPy U-Net/ResUNet post-processor. The final report will quantify performance with PSNR and SSIM and discuss visual artifacts, stability across view counts, and the trade-off between model-based regularization and supervised learning.
+This report studies sparse-view computed tomography (CT) reconstruction as a computational imaging inverse problem. The same degraded Mayo CT measurements are used for all reconstruction methods, with images resized to $256 \times 256$, parallel-beam projection geometries with $180$, $90$, $60$, and $45$ views, and additive Gaussian measurement noise with relative level $0.005$. Three methodological families are considered: Total $p$-Variation (TpV) regularization, an end-to-end Generalized ResUNet post-processing model, and a DiffPIR-based diffusion reconstruction method. At the current stage, the repository contains complete implementation evidence for TpV and Generalized ResUNet, while DiffPIR is kept as the selected generative method to be completed before final reporting. Quantitative evaluation is planned through PSNR and SSIM, complemented by visual comparison panels and error maps.
 \end{abstract}
 
 \section{Introduction}
 
-Sparse-view CT reduces the number of projection angles acquired by the scanner, lowering acquisition time and potentially radiation exposure, but it makes the inverse problem more ill-posed. Filtered backprojection can produce severe streak artifacts when the angular sampling is limited. The aim of this project is therefore to compare reconstruction strategies from different methodological families under the same acquisition protocol and on the same test data.
-
-The project specifications require:
-\begin{itemize}[leftmargin=*]
-  \item Mayo CT data, resized to $256 \times 256$;
-  \item sparse-view parallel-beam CT with $n_\theta \in \{180,90,60,45\}$;
-  \item additive measurement noise with relative level $0.005$;
-  \item a shared degraded input for all tested methods;
-  \item quantitative comparison through PSNR and SSIM, plus visual comparison panels.
-\end{itemize}
-
-The report follows the style of a short computational imaging paper: after defining the inverse problem, it describes the data pipeline, reconstruction methods, evaluation protocol, results, and limitations.
-
-\section{Problem Formulation}
-
-Let $x \in \mathbb{R}^{256 \times 256}$ denote a clean CT slice and let $K_\theta$ be the discrete parallel-beam CT projection operator for a given number of views $\theta$. The observed sinogram is modeled as
+Computed tomography is an imaging modality in which the internal attenuation map of an object is reconstructed from indirect X-ray projection measurements. In the two-dimensional setting considered in this project, the unknown image is denoted by $x \in \mathbb{R}^{256 \times 256}$ and the measured sinogram is obtained by applying a discrete CT projection operator. For a fixed number of projection angles, the forward model is written as
 \begin{equation}
   y^\delta = K_\theta x + e,
+  \label{eq:ct-forward-model}
 \end{equation}
-where $e$ is additive Gaussian measurement noise scaled so that
+where $K_\theta$ denotes the parallel-beam Radon-type projection operator, $y^\delta$ is the noisy measured sinogram, and $e$ is additive measurement noise. The reconstruction problem consists of estimating $x$ from $y^\delta$.
+
+The task addressed in this project is sparse-view CT. In this setting, the number of projection angles is intentionally reduced. The project specifications require the configurations
 \begin{equation}
-  \frac{\|e\|_2}{\|K_\theta x\|_2} \approx 0.005.
+  n_\theta \in \{180,90,60,45\}.
+  \label{eq:view-settings}
 \end{equation}
-The reconstruction task is to estimate $x$ from $y^\delta$. Since angular undersampling makes the inverse problem ill-posed, prior information is required either explicitly, through regularization, or implicitly, through a learned reconstruction model.
+Reducing the number of views decreases the amount of measured data, but it also makes the inverse problem more ill-posed. In practice, this typically increases streaking artifacts and makes direct reconstruction less stable. Therefore, additional prior information is required either explicitly, by means of regularization, or implicitly, through learned image priors.
 
-\section{Dataset and Preprocessing}
+\subsection*{Mayo Dataset}
 
-The dataset is the Mayo CT dataset specified for Group B. The preprocessing stage is implemented in notebook \texttt{00\_data\_and\_degradation.ipynb}. Each slice is loaded as a grayscale image, resized to $256 \times 256$, normalized to $[0,1]$, and stored in patient-level PyTorch files. For each patient and each split, the pipeline stores:
-\begin{itemize}[leftmargin=*]
-  \item the clean image stack;
-  \item noisy sinograms for $180$, $90$, $60$, and $45$ views;
-  \item metadata including patient identifier, geometry, detector size, and empirical relative noise.
-\end{itemize}
-
-The data contract is important for fairness: all downstream methods read the same saved sinograms rather than regenerating degraded observations independently. This avoids hidden differences in noise realizations or projection geometry.
+The dataset used in the project is the Mayo CT dataset provided in the course material \cite{mccollough2016lowdose}. The local project archive contains PNG slices organized by patient folders. The processed split used by the current notebooks is summarized in Table~\ref{tab:mayo-split}. Each slice is resized to $256 \times 256$ and normalized before the CT forward model is applied. The processed data are saved at patient level, preserving the relation between each patient identifier and its corresponding slices.
 
 \begin{table}[t]
   \centering
-  \caption{Dataset split summary. Fill the counts from \texttt{processed2/manifest.json}.}
-  \label{tab:splits}
+  \caption{Mayo processed dataset organization used by the current notebooks.}
+  \label{tab:mayo-split}
   \begin{tabular}{lrr}
     \toprule
-    Split & Number of patients & Number of slices \\
+    Split & Patients & Slices \\
     \midrule
-    Train & \todoresult{fill} & \todoresult{fill} \\
-    Validation & \todoresult{fill} & \todoresult{fill} \\
-    Test & \todoresult{fill} & \todoresult{fill} \\
+    Train & 8 & 2585 \\
+    Validation & 2 & 721 \\
+    Test & 1 & 327 \\
     \bottomrule
   \end{tabular}
 \end{table}
 
-\section{Methods}
+For each clean image $x$, four degraded sinograms are generated, one for each view configuration. The noise model is implemented in the measurement domain. If $y=K_\theta x$ is the clean sinogram, then the noisy data are
+\begin{equation}
+  y^\delta = y + e,
+  \qquad
+  \frac{\|e\|_2}{\|y\|_2} \approx 0.005.
+  \label{eq:relative-noise}
+\end{equation}
+This construction ensures that all methods receive the same degraded observations. This point is essential for a fair comparison, because different noise realizations or different projection geometries would make the numerical results non-comparable.
 
-\subsection{Filtered Backprojection Proxy}
+\subsection*{Software Tools}
 
-Filtered backprojection (FBP) is not treated as a final project method in the current comparison, but it is used as the degraded image-domain input to the neural network. FBP is computed with the IPPy wrapper \texttt{solvers.FBP}, which delegates to the ASTRA-based \texttt{CTProjector.FBP}. This gives a consistent image-domain proxy for all view counts.
+The implementation is based on the IPPy library distributed with the course material. In this project, IPPy is used for the CT projection operator, filtered backprojection proxy, Chambolle--Pock TpV solver, U-Net architecture, and evaluation metrics. The main IPPy components are:
+\begin{itemize}[leftmargin=*]
+  \item \path{IPPy.operators.CTProjector}, which wraps the ASTRA-based CT forward and adjoint operators \cite{astra2016};
+  \item \path{IPPy.solvers.FBP}, used only to compute the degraded image-domain proxy;
+  \item \path{IPPy.solvers.ChambollePockTpVUnconstrained}, used for TpV optimization \cite{chambolle2011first};
+  \item \path{IPPy.nn.models.UNet}, used for the learned ResUNet post-processor \cite{ronneberger2015unet};
+  \item \path{IPPy.utilities.metrics}, used to compute PSNR and SSIM \cite{wang2004ssim}.
+\end{itemize}
 
-\subsection{\texorpdfstring{Total $p$-Variation Reconstruction}{Total p-Variation Reconstruction}}
+\begin{figure}[t]
+  \centering
+  \maybeincludegraphics[width=0.95\linewidth]{dataset_sanity_check.png}
+  \caption{Suggested figure: one normalized Mayo CT slice and the corresponding noisy sparse-view sinograms for $180$, $90$, $60$, and $45$ projection angles.}
+  \label{fig:dataset-sanity-check}
+\end{figure}
 
-The variational method solves
+\section{Selected Methods}
+
+\subsection{\texorpdfstring{Total $p$-Variation Regularization}{Total p-Variation Regularization}}
+
+The first selected method is a model-based variational reconstruction approach. The unknown image is estimated by minimizing a functional composed of a data-fidelity term and a Total $p$-Variation regularization term, following the general total-variation regularization principle \cite{rudin1992nonlinear}:
 \begin{equation}
   \widehat{x}
   =
   \arg\min_{x \ge 0}
   \frac{1}{2}\|K_\theta x-y^\delta\|_2^2
-  + \lambda R_{p}(x),
+  +
+  \lambda R_p(x).
+  \label{eq:tpv-problem}
 \end{equation}
-where $R_p$ is a Total $p$-Variation prior and $p \in (0.1,0.5)$ as required by the project specifications. In the current implementation, $p=0.35$ and $\lambda=0.01$. The optimization is performed with \texttt{IPPy.solvers.ChambollePockTpVUnconstrained}, a primal-dual scheme inspired by Chambolle--Pock algorithms \cite{chambolle2011first}. The reported PSNR and SSIM are those computed internally by the solver diagnostics, so the metrics refer to the raw optimization iterate rather than to a display-normalized image.
+The data-fidelity term enforces consistency with the measured sinogram. The regularization term introduces prior information on the spatial structure of the image. In this project it is defined on the image gradient as
+\begin{equation}
+  R_p(x)
+  =
+  \sum_i \|\nabla x_i\|_2^p,
+  \qquad
+  0.1 < p < 0.5.
+  \label{eq:tpv-regularizer}
+\end{equation}
+The exponent $p$ is chosen in the non-convex range required by the project specifications. Since $p<1$, the penalty promotes sparse image gradients more strongly than standard convex total variation. This is useful in CT reconstruction because anatomical structures often contain smooth regions separated by relevant edges.
+
+The optimization is solved through a primal-dual Chambolle--Pock-type scheme. The solver used in IPPy applies a reweighted version of the TpV term. A smoothed gradient magnitude is introduced through the parameter $\eta$:
+\begin{equation}
+  W(x)
+  =
+  \left(
+  \frac{\sqrt{\eta^2 + |\nabla x|^2}}{\eta}
+  \right)^{p-1}.
+  \label{eq:tpv-weight}
+\end{equation}
+The weights depend on the current image estimate and modify the dual projection step associated with the gradient term. In this way, the non-convex TpV prior is handled by iteratively solving weighted primal-dual updates.
 
 \subsection{Generalized ResUNet Post-Processing}
 
-The end-to-end learning method is implemented in notebook \path{02_ResUnet_reconstruction.ipynb}. A single generalized IPPy U-Net is trained across all four view configurations. The input is the FBP reconstruction of the noisy sparse-view sinogram; the target is the clean CT image. The model uses IPPy residual down/up blocks and a final sigmoid activation, so its output is naturally constrained to $[0,1]$.
+The second selected method is an end-to-end supervised learning method. The network does not operate directly on the sinogram. Instead, a filtered backprojection reconstruction is first computed from the sparse-view noisy sinogram, and this image is used as the degraded input to the neural network. The supervised mapping can be written as
+\begin{equation}
+  \widehat{x}
+  =
+  f_\Theta(x_{\mathrm{FBP}}),
+  \qquad
+  x_{\mathrm{FBP}} = \operatorname{FBP}(y^\delta),
+  \label{eq:resunet-mapping}
+\end{equation}
+where $f_\Theta$ is the learned ResUNet and $\Theta$ denotes its trainable parameters.
 
-This choice is motivated by the U-Net architecture \cite{ronneberger2015unet}: encoder-decoder skip connections preserve spatial detail, while the bottleneck captures larger context. Training one model across all view counts encourages robustness to different artifact strengths. The current checkpoint strategy saves a latest checkpoint at the end of each epoch and resumes from the next epoch when requested.
+The model is trained by minimizing the mean squared error between the network output and the clean Mayo slice:
+\begin{equation}
+  \mathcal{L}(\Theta)
+  =
+  \frac{1}{N}
+  \sum_{j=1}^{N}
+  \left\|
+  f_\Theta(x_{\mathrm{FBP},j}) - x_j
+  \right\|_2^2.
+  \label{eq:mse-loss}
+\end{equation}
+The U-Net structure is appropriate for this task because it combines multiscale feature extraction with skip connections. The encoder extracts increasingly abstract features, while the decoder reconstructs a full-resolution image. Skip connections help preserve spatial information that may be lost during downsampling.
 
-\subsection{Additional Method Slot}
+In this project, a single generalized ResUNet is trained across all four sparse-view configurations. Therefore, the training set contains FBP inputs generated from $180$, $90$, $60$, and $45$ views. This choice makes the network a general artifact-reduction model, exposed during training to different artifact intensities.
 
-The project specifications for a group of two students require three of the four methodological families. The current codebase contains the variational and end-to-end methods. If the final project includes a third method, this section should describe it. Two compatible options are:
-\begin{itemize}[leftmargin=*]
-  \item a hybrid learned primal-dual method, following the unrolled primal-dual idea of Adler and {\"O}ktem \cite{adler2018learned}, potentially using \texttt{IPPy.hybrid.LearnedPrimalDual};
-  \item a diffusion-based method, using a reconstruction prior and explaining how the data consistency step is adapted to sparse-view CT.
-\end{itemize}
-If no third method is implemented, the report should explicitly justify the final methodological scope during the oral discussion.
+\subsection{DiffPIR-Based Diffusion Reconstruction}
 
-\section{Experimental Setup}
+The third selected methodological family is a generative method based on diffusion models, following the project requirement to adapt DiffPIR to sparse-view CT. At this stage of the repository, this method is not yet represented by a complete reconstruction notebook, so the present subsection defines the theoretical slot that must be completed once the implementation is finalized.
 
-All methods are evaluated on the same central test slice and the same saved sinograms. This is the main fairness constraint: each method receives identical degraded data for a fixed view count. Quantitative quality is measured with PSNR and SSIM \cite{wang2004ssim}. Visual quality is assessed through reconstruction panels and absolute error maps.
+A diffusion model defines a prior over clean images through a gradual noising process and a learned reverse denoising process. In a generic denoising diffusion formulation, a clean image $x_0$ is progressively corrupted as
+\begin{equation}
+  x_t
+  =
+  \sqrt{\bar{\alpha}_t}x_0
+  +
+  \sqrt{1-\bar{\alpha}_t}\epsilon,
+  \qquad
+  \epsilon \sim \mathcal{N}(0,I),
+  \label{eq:diffusion-forward}
+\end{equation}
+where $t$ is the diffusion step and $\bar{\alpha}_t$ is determined by the noise schedule. During reconstruction, the reverse process is guided not only by the learned image prior, but also by the physical CT data-consistency term. For sparse-view CT, the relevant consistency term is
+\begin{equation}
+  \mathcal{D}(x)
+  =
+  \frac{1}{2}\|K_\theta x-y^\delta\|_2^2.
+  \label{eq:diffpir-data-consistency}
+\end{equation}
+The role of the DiffPIR adaptation is to balance the generative denoising step with the requirement that the generated image remains compatible with the measured sparse-view sinogram. The strength of this correction is controlled by a parameter denoted here by $\zeta$:
+\begin{equation}
+  x \leftarrow x - \zeta \nabla_x \mathcal{D}(x)
+  =
+  x - \zeta K_\theta^\top(K_\theta x-y^\delta).
+  \label{eq:diffpir-gradient-step}
+\end{equation}
+The value of $\zeta$ must be chosen carefully. If it is too small, the generative prior may dominate and produce anatomically plausible but data-inconsistent structures. If it is too large, the reconstruction may preserve the original sparse-view artifacts.
+
+\section{Implementation}
+
+\subsection{\texorpdfstring{Implementation of Total $p$-Variation}{Implementation of Total p-Variation}}
+
+The TpV pipeline is implemented in \texttt{notebooks/01\_TpV\_reconstruction.ipynb}. The notebook loads the processed Mayo patient file and selects the central test slice. For each view setting, a CT projector is created as
+\begin{equation}
+  \begin{aligned}
+  K_\theta
+  &=
+  \operatorname{CTProjector}
+  \bigl(
+  \texttt{img\_shape}=(256,256), \\
+  &\hspace{2.2cm}
+  \texttt{angles}=\operatorname{linspace}(0,\pi,n_\theta),
+  \texttt{det\_size}=256,
+  \texttt{geometry}=\texttt{parallel}
+  \bigr).
+  \end{aligned}
+  \label{eq:ippy-projector}
+\end{equation}
+The solver is then instantiated through \path{IPPy.solvers.ChambollePockTpVUnconstrained}. The current final-test parameters used in the notebook are
+\begin{equation}
+  \lambda = 0.01,
+  \qquad
+  p = 0.35,
+  \qquad
+  \texttt{maxiter}=150.
+  \label{eq:tpv-parameters}
+\end{equation}
+The solver is initialized from a zero image, because \texttt{starting\_point=None} is passed to the IPPy call. The ground-truth slice is provided only for diagnostic computation of PSNR and SSIM during the iterations. The reconstruction is constrained to non-negative values inside the solver.
+
+The notebook saves one visual panel per view configuration. Each panel contains the ground truth image, the TpV reconstruction, and the absolute error map. It also saves convergence plots containing the objective value, residual, PSNR, and SSIM curves.
+
+\subsection{Implementation of Generalized ResUNet}
+
+The learned method is implemented in \texttt{notebooks/02\_ResUnet\_reconstruction.ipynb}. The input to the network is generated in memory by applying \texttt{IPPy.solvers.FBP} to the saved noisy sinograms. The resulting FBP images are normalized per image and clamped to $[0,1]$. These images are used only as degraded inputs, not as a separate project method.
+
+The network is instantiated through \texttt{IPPy.nn.models.UNet} with one input channel and one output channel. The current configuration uses residual downsampling and upsampling blocks:
+\begin{equation}
+  \begin{aligned}
+  \texttt{middle\_ch} &= (32,64,128,256,512), \\
+  \texttt{n\_layers\_per\_block} &= 2, \\
+  \texttt{final\_activation} &= \texttt{sigmoid}.
+  \end{aligned}
+  \label{eq:resunet-config}
+\end{equation}
+The sigmoid final activation constrains the output to the same normalized intensity range as the target images.
+
+Training is supervised. For each patient batch, the notebook cycles through all four angle configurations. Therefore, the same clean target may be paired with different FBP inputs corresponding to different levels of angular undersampling. The optimizer is Adam with learning rate $10^{-3}$, the batch size is $8$, and the current training horizon is $20$ epochs:
+\begin{equation}
+  \texttt{learning\_rate}=10^{-3},
+  \qquad
+  \texttt{batch\_size}=8,
+  \qquad
+  \texttt{epochs}=20.
+  \label{eq:resunet-training-parameters}
+\end{equation}
+The checkpoint \texttt{weights/unet/resunet\_generalized\_latest.pt} stores the model state, optimizer state, loss history, validation loss history, and configuration.
+
+\subsection{Implementation of DiffPIR}
+
+The repository configuration marks DiffPIR as the selected generative method and excludes the hybrid PD-Net method for the two-student group. However, no complete DiffPIR reconstruction notebook is currently present in the repository. Therefore, this implementation subsection is intentionally written as a structured placeholder.
+
+The final DiffPIR implementation should use the same Mayo processed tensors and the same IPPy CT projector as the other methods. For each view count, the algorithm should load the fixed noisy sinogram $y^\delta$, use \texttt{IPPy.operators.CTProjector} for $K_\theta$ and $K_\theta^\top$, and apply the diffusion reconstruction loop with a data-consistency correction of the form in Eq.~\eqref{eq:diffpir-gradient-step}. The parameters that must be reported are the number of reverse diffusion steps, the data-consistency weight $\zeta$, and the noise schedule used during sampling.
+
+\begin{figure}[t]
+  \centering
+  \maybeincludegraphics[width=0.9\linewidth]{method_pipeline.png}
+  \caption{Suggested figure: complete experimental pipeline from Mayo slice to sparse-view sinogram, then to TpV, ResUNet, and DiffPIR reconstructions.}
+  \label{fig:method-pipeline}
+\end{figure}
+
+\section{Results and Discussion}
+
+\subsection{Hyperparameter Tuning}
+
+The project specifications require that each method has its main parameters selected heuristically and discussed. For TpV, the parameters are $\lambda$, $p$, and the number of Chambolle--Pock iterations. The parameter $\lambda$ balances data consistency and regularization: a value that is too small may leave streak artifacts and noise, whereas a value that is too large may oversmooth image details and produce staircasing. The parameter $p$ controls the non-convex sparsity of the gradient prior. The current selected value is $p=0.35$, which lies inside the required interval $(0.1,0.5)$.
+
+For the ResUNet method, the relevant hyperparameters are the learning rate, batch size, number of epochs, base number of channels, and final activation. These parameters are selected by monitoring the training and validation MSE curves. The current configuration uses a learning rate of $10^{-3}$, batch size $8$, base channel count $32$, and $20$ epochs.
+
+For DiffPIR, the tuning process must be completed after implementation. The parameters to be optimized are the number of diffusion sampling steps, the data-consistency multiplier $\zeta$, and the internal noise schedule. The expected trade-off is between generative image quality and physical consistency with the measured CT sinogram.
+
+\subsection{Evaluation Metrics}
+
+The quantitative evaluation uses PSNR and SSIM. The PSNR is computed from the mean squared error between reconstruction $\widehat{x}$ and ground truth $x$:
+\begin{equation}
+  \operatorname{MSE}(\widehat{x},x)
+  =
+  \frac{1}{N}
+  \sum_{i=1}^{N}
+  (\widehat{x}_i-x_i)^2,
+  \label{eq:mse-metric}
+\end{equation}
+\begin{equation}
+  \operatorname{PSNR}(\widehat{x},x)
+  =
+  -20\log_{10}
+  \left(
+  \sqrt{\operatorname{MSE}(\widehat{x},x)}
+  \right),
+  \label{eq:psnr}
+\end{equation}
+where the images are assumed to be normalized in $[0,1]$. SSIM is used as a structural similarity metric and is computed by the IPPy metric wrapper.
+
+\subsection{Quantitative Results}
+
+Table~\ref{tab:quantitative-results} is prepared for the final numerical values. The ResUNet entries are preliminary values printed by \texttt{notebooks/02\_ResUnet\_reconstruction.ipynb} on the central test slice. TpV values must be inserted from \texttt{notebooks/01\_TpV\_reconstruction.ipynb} or the final comparison notebook, and DiffPIR values must be inserted after the third method is implemented.
 
 \begin{table}[t]
   \centering
-  \caption{Main experimental parameters.}
-  \label{tab:parameters}
-  \begin{tabular}{ll}
-    \toprule
-    Parameter & Value \\
-    \midrule
-    Image size & $256 \times 256$ \\
-    Geometry & Parallel beam \\
-    Detector size & $256$ \\
-    Views & $180$, $90$, $60$, $45$ \\
-    Relative noise level & $0.005$ \\
-    TpV $p$ & $0.35$ \\
-    TpV $\lambda$ & $0.01$ \\
-    TpV iterations & $150$ \\
-    ResUNet epochs & \todoresult{fill final value} \\
-    ResUNet loss & Mean squared error \\
-    \bottomrule
-  \end{tabular}
-\end{table}
-
-\section{Results}
-
-\subsection{Quantitative Comparison}
-
-Table~\ref{tab:metrics} should be filled with the values printed by \path{04_results_comparison.ipynb}. TpV metrics must be read from the IPPy solver diagnostics, while ResUNet metrics must be computed on the final clamped network output, without per-image renormalization.
-
-\begin{table}[t]
-  \centering
-  \caption{PSNR and SSIM comparison on the shared test slice.}
-  \label{tab:metrics}
+  \caption{PSNR and SSIM comparison on the shared Mayo test slice.}
+  \label{tab:quantitative-results}
   \begin{tabular}{llcc}
     \toprule
     Views & Method & PSNR (dB) & SSIM \\
     \midrule
-    180 & TpV & \todoresult{fill} & \todoresult{fill} \\
-    180 & ResUNet & \todoresult{fill} & \todoresult{fill} \\
-    90 & TpV & \todoresult{fill} & \todoresult{fill} \\
-    90 & ResUNet & \todoresult{fill} & \todoresult{fill} \\
-    60 & TpV & \todoresult{fill} & \todoresult{fill} \\
-    60 & ResUNet & \todoresult{fill} & \todoresult{fill} \\
-    45 & TpV & \todoresult{fill} & \todoresult{fill} \\
-    45 & ResUNet & \todoresult{fill} & \todoresult{fill} \\
+    180 & TpV & \todo{fill} & \todo{fill} \\
+    180 & Generalized ResUNet & 13.8369 & 0.1259 \\
+    180 & DiffPIR & \todo{fill after implementation} & \todo{fill} \\
+    90 & TpV & \todo{fill} & \todo{fill} \\
+    90 & Generalized ResUNet & 13.8369 & 0.1259 \\
+    90 & DiffPIR & \todo{fill after implementation} & \todo{fill} \\
+    60 & TpV & \todo{fill} & \todo{fill} \\
+    60 & Generalized ResUNet & 13.8369 & 0.1259 \\
+    60 & DiffPIR & \todo{fill after implementation} & \todo{fill} \\
+    45 & TpV & \todo{fill} & \todo{fill} \\
+    45 & Generalized ResUNet & 13.8369 & 0.1259 \\
+    45 & DiffPIR & \todo{fill after implementation} & \todo{fill} \\
     \bottomrule
   \end{tabular}
 \end{table}
 
-\subsection{Visual Comparison}
+\subsection{Visual Results and Critical Discussion}
 
-Figure~\ref{fig:comparison-panels} should include representative visual panels generated by the final comparison notebook. The expected qualitative trend is that fewer views produce stronger streak artifacts and a harder inverse problem. The discussion should compare edge preservation, noise suppression, anatomical detail, and possible oversmoothing.
+The visual comparison should include reconstructed images, absolute error maps, and quantitative labels for each method and view count. The most informative figures are expected to be: a dataset sanity check, TpV reconstruction panels, TpV convergence curves, the ResUNet training curve, ResUNet reconstruction panels, DiffPIR reconstruction panels, and a global method comparison panel.
 
 \begin{figure}[t]
   \centering
@@ -206,31 +357,24 @@ Figure~\ref{fig:comparison-panels} should include representative visual panels g
     \maybeincludegraphics[width=\linewidth]{comparison_panel_45.png}
     \caption{45 views}
   \end{subfigure}
-  \caption{Example comparison panels. If the output figures are not generated yet, placeholders are shown.}
+  \caption{Suggested figure: representative comparison panels for a high-view and a low-view sparse CT setting.}
   \label{fig:comparison-panels}
 \end{figure}
 
 \begin{figure}[t]
   \centering
   \maybeincludegraphics[width=0.85\linewidth]{project_methods_quantitative_comparison_all_views.png}
-  \caption{Aggregate PSNR/SSIM plot across view counts.}
+  \caption{Suggested figure: aggregate PSNR/SSIM plot across view counts and methods.}
   \label{fig:quantitative-plot}
 \end{figure}
 
-\section{Discussion}
-
-The discussion should connect quantitative results to visible artifacts. A possible structure is:
-\begin{itemize}[leftmargin=*]
-  \item \textbf{Effect of sparse views.} Explain how performance changes from $180$ to $45$ views and whether each method degrades smoothly.
-  \item \textbf{TpV behavior.} Discuss regularization strength, edge preservation, staircasing or oversmoothing, and convergence curves.
-  \item \textbf{ResUNet behavior.} Discuss artifact suppression, possible hallucination/oversmoothing, and dependence on FBP input quality.
-  \item \textbf{Fairness.} Emphasize that all methods use the same stored sinograms and the same test slice.
-  \item \textbf{Limitations.} Mention single-slice reporting if only a representative slice is used, limited hyperparameter sweep, and the need for an additional method if required by final evaluation rules.
-\end{itemize}
+The final discussion should be written after the metric table and figures are available. The following points must be addressed. First, it should be verified whether the reconstruction quality decreases as the number of views is reduced from $180$ to $45$. Second, the TpV method should be discussed in terms of edge preservation, noise suppression, possible staircasing, and sensitivity to $\lambda$ and $p$. Third, the ResUNet should be discussed in terms of artifact removal, possible oversmoothing, and dependence on the FBP proxy. Finally, the DiffPIR method should be evaluated by checking whether the generative prior improves visual quality without violating CT data consistency.
 
 \section{Conclusions}
 
-This project frames sparse-view CT as an inverse problem and compares model-based and learning-based reconstruction strategies under a shared degradation protocol. TpV offers an interpretable regularized solution with explicit data fidelity and prior terms. The generalized ResUNet provides a supervised artifact-reduction model trained on FBP proxies across all view counts. The final conclusion should be written after inserting the measured PSNR/SSIM values and inspecting the generated visual panels.
+This report formulates sparse-view CT reconstruction on the Mayo dataset as an inverse problem and prepares a structured comparison of three methodological families. The TpV method provides an interpretable model-based reconstruction strategy based on explicit data fidelity and gradient-domain regularization. The Generalized ResUNet provides a supervised learned post-processing strategy trained from FBP proxy images to clean CT targets. The DiffPIR method is selected as the generative approach required by the project configuration, but its implementation and quantitative results still need to be completed.
+
+The final version of the report should insert the missing PSNR and SSIM values, add the generated figures, and replace the DiffPIR placeholders with the exact implementation and experimental results. Once these elements are completed, the discussion will be able to compare the three approaches in terms of numerical accuracy, visual artifacts, computational cost, and robustness across sparse-view settings.
 
 \bibliographystyle{unsrt}
 \bibliography{references}
