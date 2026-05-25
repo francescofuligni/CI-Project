@@ -10,7 +10,7 @@ From this directory:
 make
 ```
 
-The PDF is generated as `build/report.pdf`.
+The working PDF is generated as `build/report.pdf`, then copied to `../docs/report.pdf`.
 
 ## Structure
 
