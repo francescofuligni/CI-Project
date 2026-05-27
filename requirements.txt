@@ -1,8 +1,0 @@
-numpy
-scipy
-scikit-image
-matplotlib
-pyyaml
-tqdm
-torch
-torchvision

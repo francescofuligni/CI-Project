@@ -1,64 +1,44 @@
 # CI-Project
 
-Project repository for the Computational Imaging Group B assignment.
+This repository contains the materials for the Computational Imaging Group B project on sparse-view CT reconstruction with the Mayo dataset.
 
-The project studies sparse-view CT reconstruction on the Mayo dataset. The same degraded sinograms are shared by all reconstruction methods, so that the final comparison is based on identical data, geometry, and noise realizations.
+The implemented methods are:
 
-## Project Setup
+1. Total p-Variation regularization (TpV);
+2. a supervised ResUNet-style image-domain post-processor;
+3. DiffPIR adapted to the sparse-view CT setting.
 
-The current setup follows the project trace:
+This repository is intended primarily for consultation. The notebooks are written for Google Colab and Google Drive, not for direct local execution from the cloned repository. To reproduce the experiments, upload the notebooks and the required data/support files to Google Drive, open the notebooks in Colab, adjust the absolute paths in the first cells if needed, and run them there.
 
-- task: sparse-view CT reconstruction;
-- dataset: Mayo CT slices;
-- image size: `256 x 256`;
-- CT geometry: parallel beam;
-- detector size: `256`;
-- projection angles: `180`, `90`, `60`, `45`;
-- measurement noise: relative Gaussian noise level `0.005`;
-- metrics: PSNR and SSIM;
-- visual outputs: reconstructions, absolute error maps, and comparison panels.
+## How to Use the Materials
 
-For a two-student group, the selected methods are:
+Use Google Colab as the execution environment.
 
-1. Total p-Variation regularization with `0.1 < p < 0.5`;
-2. a supervised end-to-end Generalized ResUNet post-processor;
-3. DiffPIR adapted to sparse-view CT.
+1. Upload the notebooks in `notebooks/` to Google Drive.
+2. Open each notebook from Google Drive with Colab.
+3. Use a GPU runtime for `02_ResUnet_reconstruction.ipynb` and `03_DiffPir_reconstruction.ipynb`.
+4. Before running, check the first setup cells and adapt the path constants to your Drive layout.
+5. Run the notebooks in the order described below.
 
-The hybrid PD-Net method is intentionally excluded, as allowed by the project specifications for groups of two students. In the current repository state, TpV and ResUNet are implemented in notebooks; DiffPIR is documented as the planned third method and still needs its final reconstruction notebook/results.
+The notebooks contain absolute Colab/Drive paths. If your Drive folder names differ, update those constants before executing any cell that loads data, imports `IPPy`, or saves checkpoints/outputs.
 
-## Repository Layout
+## Main Drive Layout for Notebooks 00, 01, 02, and 04
 
-```text
-CI-Project/
-├── configs/      Reference configuration files.
-├── IPPy/         Course library used for operators, solvers, models, and metrics.
-├── notebooks/    Main executable project notebooks.
-├── outputs/      Lightweight tracked output folders; generated outputs are usually outside Git.
-├── report/       LaTeX source and bibliography.
-├── docs/         Final exported deliverables, including docs/report.pdf.
-├── homeworks/    Course homework material and pretrained homework weights.
-└── Makefile      Root command for regenerating docs/report.pdf.
-```
-
-Large data, processed tensors, trained weights, and most generated figures are not tracked by Git.
-
-## Expected External Layout
-
-The notebooks are currently written for Google Colab with Google Drive mounted at:
+The notebooks `00_data_and_degradation.ipynb`, `01_TpV_reconstruction.ipynb`, `02_ResUnet_reconstruction.ipynb`, and `04_results_comparison.ipynb` assume this project root:
 
 ```text
 /content/drive/MyDrive/LM_INFORMATICA/COMPUTATIONAL_IMAGING/
 ```
 
-The expected Drive layout is:
+They expect the following logical structure under that root:
 
 ```text
 COMPUTATIONAL_IMAGING/
-├── Mayo2/
-│   ├── train/
-│   ├── val/
-│   └── test/
 ├── IPPy/
+├── Mayo2/
+│   ├── train/<patient>/*.png
+│   ├── val/<patient>/*.png
+│   └── test/<patient>/*.png
 ├── processed2/
 ├── weights/
 │   └── unet/
@@ -68,136 +48,285 @@ COMPUTATIONAL_IMAGING/
     └── comparison/
 ```
 
-The raw Mayo archive distributed with the course may initially contain only `train/` and `test/`. The current executed setup uses a processed split with:
+The `IPPy/` directory must be available at the project root because these notebooks append `PROJECT_ROOT` to `sys.path` and import from `IPPy`.
 
-| Split | Patients | Slices |
-| --- | ---: | ---: |
-| train | 8 | 2585 |
-| val | 2 | 721 |
-| test | 1 | 327 |
+The raw Mayo images must be organized by split and patient folder. The expected input pattern is:
 
-The test patient used in the notebooks is `C081`, and the representative final evaluation uses the central test slice.
-
-For a local non-Colab run, keep the same logical structure next to the repository or adapt the path constants in the notebooks before running them.
-
-## Python Environment
-
-The notebooks are designed for Colab. The first cells install or import the needed runtime components.
-
-Minimal Python dependencies are listed in `requirements.txt`:
-
-```bash
-pip install -r requirements.txt
+```text
+Mayo2/<split>/<patient>/*.png
 ```
 
-The CT projector requires ASTRA:
+where `<split>` is one of `train`, `val`, or `test`.
 
-```bash
-pip install astra-toolbox
+## DiffPIR Drive Layout
+
+`03_DiffPir_reconstruction.ipynb` currently uses a different Drive root:
+
+```text
+/content/drive/MyDrive/COMPUTATIONAL_IMAGING/
 ```
 
-On Colab, the notebooks call:
+It expects the Mayo dataset archive and DiffPIR weights/checkpoints under:
+
+```text
+COMPUTATIONAL_IMAGING/
+├── Mayo2.zip
+└── weights/
+    ├── DiffPir.ckpt
+    ├── DiffPir.pth
+    ├── DiffPir_raw.pth
+    └── DiffPir_best.pth
+```
+
+The notebook unzips the dataset locally inside the Colab runtime:
+
+```text
+/content/Mayo/Mayo2/{train,val,test}
+```
+
+It also clones IPPy at runtime from:
+
+```text
+https://github.com/NicolasCola7/IPPy.git
+```
+
+If you want all notebooks to use a single Drive root, manually align the path variables before execution. In particular, check `PROJECT_ROOT`, `drive_dir`, `dataset_dir`, and all weight/checkpoint paths.
+
+## Required Dependencies
+
+For notebooks `00`, `01`, `02`, and `04`, the minimal runtime dependencies are:
+
+```text
+astra-toolbox
+numpy
+torch
+matplotlib
+tqdm
+```
+
+They also require the course/project `IPPy/` sources to be available from the configured `PROJECT_ROOT`.
+
+`03_DiffPir_reconstruction.ipynb` additionally installs or uses:
+
+```text
+torchvision
+numba
+scikit-image
+Pillow
+cupy-cuda12x
+```
+
+Colab already provides many common packages, but the notebooks include install cells where needed. Keep those cells or update them according to the runtime you use.
+
+## Required Files
+
+To run everything from scratch, you need:
+
+```text
+Mayo2/train/<patient>/*.png
+Mayo2/val/<patient>/*.png
+Mayo2/test/<patient>/*.png
+IPPy/
+```
+
+To skip the data-preparation notebook, you need the processed data contract:
+
+```text
+processed2/manifest.json
+processed2/train/*.pt
+processed2/val/*.pt
+processed2/test/*.pt
+```
+
+To run the final TpV/ResUNet comparison in `04_results_comparison.ipynb`, you also need:
+
+```text
+outputs/tpv/tpv_params.json
+weights/unet/resunet_generalized_best.pt
+```
+
+or, if the best checkpoint is not available:
+
+```text
+weights/unet/resunet_generalized_latest.pt
+```
+
+To evaluate DiffPIR without retraining, you need:
+
+```text
+weights/DiffPir_best.pth
+```
+
+If that file is missing, `03_DiffPir_reconstruction.ipynb` must train or resume the diffusion model from the available DiffPIR checkpoint files.
+
+The trained model weights are not stored in this repository. They can be downloaded from the shared Google Drive folder:
+
+```text
+https://drive.google.com/drive/folders/177ArWjtRR0TANeE_H0YReEmOvBxG9UDI?usp=sharing
+```
+
+After downloading them, place the files under the paths expected by the notebooks, for example `weights/unet/` for ResUNet checkpoints and `weights/` for DiffPIR checkpoints.
+
+## Notebook Execution Order
+
+Run the notebooks in this order.
+
+### 1. `00_data_and_degradation.ipynb`
+
+Creates the processed sparse-view CT data contract.
+
+It:
+
+- loads Mayo PNG slices from `Mayo2/{train,val,test}`;
+- resizes images to `256 x 256`;
+- normalizes clean images;
+- creates parallel-beam CT measurements for `180`, `90`, `60`, and `45` views;
+- adds relative Gaussian noise with level `0.005`;
+- saves one `.pt` file per patient under `processed2/`;
+- writes `processed2/manifest.json`.
+
+The saved patient files contain:
 
 ```python
-!pip install astra-toolbox
-from google.colab import drive
-drive.mount("/content/drive")
+payload["clean"]                  # [N, 1, 256, 256]
+payload["sinograms"]["180"]
+payload["sinograms"]["90"]
+payload["sinograms"]["60"]
+payload["sinograms"]["45"]
+payload["source_paths"]
+payload["metadata"]
 ```
 
-## Data Generation Contract
+All downstream methods should use these saved degraded inputs when the goal is a fair comparison.
 
-Run the data preparation notebook first:
+### 2. `01_TpV_reconstruction.ipynb`
+
+Runs Total p-Variation reconstruction.
+
+It:
+
+- loads `processed2/manifest.json`;
+- loads the first processed test patient for visual evaluation;
+- creates one `IPPy.operators.CTProjector` and one `ChambollePockTpVUnconstrained` solver per view count;
+- performs a heuristic `lambda` search on a training slice;
+- assigns `lmbda = heuristic_lmbda` unless that line is manually disabled;
+- reconstructs the central test slice for each view count;
+- saves TpV panels and convergence plots under `outputs/tpv/`;
+- exports the selected parameters to `outputs/tpv/tpv_params.json`.
+
+Current core parameters in the notebook include:
 
 ```text
-notebooks/00_data_and_degradation.ipynb
+p = 0.35
+maxiter = 250
+tolf = 1e-4
+tolx = 1e-4
 ```
 
-It loads Mayo slices, resizes and normalizes them, applies the parallel-beam CT forward model, adds measurement noise, and saves one PyTorch file per patient under `processed2/`.
+### 3. `02_ResUnet_reconstruction.ipynb`
 
-Each saved patient file has this structure:
+Trains and evaluates the supervised ResUNet-style model.
 
-```python
-payload = torch.load(patient_path, map_location="cpu")
+It:
 
-clean = payload["clean"]                   # [N, 1, 256, 256]
-sinogram_180 = payload["sinograms"]["180"] # [N, 1, 180, 256]
-sinogram_90 = payload["sinograms"]["90"]   # [N, 1, 90, 256]
-sinogram_60 = payload["sinograms"]["60"]   # [N, 1, 60, 256]
-sinogram_45 = payload["sinograms"]["45"]   # [N, 1, 45, 256]
+- loads train/validation/test patient files from `processed2/`;
+- computes FBP proxy inputs in memory from the saved sinograms;
+- builds `IPPy.models.UNet` with residual down/up blocks;
+- trains one generalized model across all view counts;
+- saves checkpoints under `weights/unet/`;
+- saves training and representative evaluation plots under `outputs/unet/`.
 
-source_paths = payload["source_paths"]
-metadata = payload["metadata"]
-```
-
-All downstream notebooks must load these tensors instead of regenerating degraded measurements. This is the fairness constraint of the project.
-
-## Reproducing the Experiments
-
-Run the notebooks in this order:
-
-1. `notebooks/00_data_and_degradation.ipynb`
-   - Creates `processed2/manifest.json`.
-   - Creates one `.pt` file per patient and split.
-   - Saves clean images and noisy sinograms for all four view counts.
-
-2. `notebooks/01_TpV_reconstruction.ipynb`
-   - Loads the processed test data.
-   - Creates one `IPPy.operators.CTProjector` per view count.
-   - Runs `IPPy.solvers.ChambollePockTpVUnconstrained`.
-   - Current parameters: `lambda = 0.01`, `p = 0.35`, `maxiter = 150`.
-   - Saves TpV reconstruction panels and convergence plots.
-
-3. `notebooks/02_ResUnet_reconstruction.ipynb`
-   - Loads train/val/test processed patient files.
-   - Computes FBP proxy inputs in memory with `IPPy.solvers.FBP`.
-   - Trains one generalized `IPPy.nn.models.UNet` across all view counts.
-   - Current parameters: `epochs = 20`, `learning_rate = 1e-3`, `batch_size = 8`, `base_channels = 32`, `final_activation = sigmoid`.
-   - Saves the latest checkpoint at `weights/unet/resunet_generalized_latest.pt`.
-
-4. `notebooks/04_results_comparison.ipynb`
-   - Loads the same central test slice.
-   - Recomputes FBP proxy inputs.
-   - Runs TpV and the trained ResUNet on the same saved sinograms.
-   - Produces final PSNR/SSIM tables and comparison panels.
-
-DiffPIR should be added as the third method using the same `processed2/` data contract and the same `IPPy.operators.CTProjector` geometry.
-
-## Report Generation
-
-The LaTeX source is in `report/main.tex`. To regenerate only the final report PDF inside `docs/`, run from the repository root:
-
-```bash
-make report
-```
-
-This compiles LaTeX in a temporary build directory:
+The main checkpoint files are:
 
 ```text
-/private/tmp/ci-project-report-build
+weights/unet/resunet_generalized_latest.pt
+weights/unet/resunet_generalized_best.pt
 ```
 
-and writes only the final PDF to:
+### 4. `03_DiffPir_reconstruction.ipynb`
+
+Trains or loads the DiffPIR diffusion prior and evaluates it inside the notebook.
+
+It:
+
+- clones IPPy at runtime;
+- installs the additional diffusion-model dependencies;
+- unzips `Mayo2.zip` into `/content/Mayo/`;
+- builds train/validation/test datasets directly from the extracted Mayo PNG files;
+- trains or loads the diffusion U-Net;
+- saves DiffPIR weights/checkpoints under the configured `weights/` folder;
+- runs DiffPIR reconstruction for `180`, `90`, `60`, and `45` views;
+- prints average PSNR and SSIM over the test dataset.
+
+The visual and quantitative DiffPIR evaluation is currently handled in this notebook itself.
+
+### 5. `04_results_comparison.ipynb`
+
+Computes the final full-test comparison for TpV and ResUNet.
+
+It:
+
+- loads `processed2/manifest.json`;
+- loads `outputs/tpv/tpv_params.json`;
+- loads the best available ResUNet checkpoint from `weights/unet/`;
+- evaluates TpV and ResUNet on all processed test slices and all view counts;
+- writes per-image metrics and summary metrics under `outputs/comparison/`;
+- saves representative panels and aggregate PSNR/SSIM plots.
+
+Important: this notebook currently compares TpV and ResUNet. It does not automatically consume DiffPIR results from `03_DiffPir_reconstruction.ipynb`.
+
+## Generated Outputs
+
+Common generated outputs are:
 
 ```text
-docs/report.pdf
+processed2/
+outputs/tpv/
+outputs/unet/
+outputs/comparison/
+weights/unet/
+weights/DiffPir*.pth
+weights/DiffPir.ckpt
 ```
 
-From inside `report/`, the equivalent command is:
+These files can be large and are not intended to be managed manually through the repository. Keep them in Drive and treat the repository as the source for notebooks, documentation, and final project materials.
 
-```bash
-make
+Model weights are available separately at:
+
+```text
+https://drive.google.com/drive/folders/177ArWjtRR0TANeE_H0YReEmOvBxG9UDI?usp=sharing
 ```
 
-To remove the temporary LaTeX build directory:
+## Path Variables to Check Before Running
 
-```bash
-make clean-report
+Before executing a notebook, inspect and adjust these variables if your Drive layout differs:
+
+```text
+PROJECT_ROOT
+MAYO_DIR
+PROCESSED_DIR
+OUTPUT_DIR
+WEIGHTS_DIR
+TPV_PARAMS_PATH
+RESUNET_BEST_CHECKPOINT_PATH
+RESUNET_LATEST_CHECKPOINT_PATH
+drive_dir
+dataset_dir
+weights_dir
+weights_path
+best_weights_path
+checkpoint_path
 ```
+
+The exact variable names differ by notebook. They are defined near the beginning of each notebook.
 
 ## Reproducibility Notes
 
-- The random seed used in the notebooks is `42`.
-- The same noisy sinograms are reused by all methods.
-- FBP is used as a ResUNet input proxy, not as a final selected method.
-- PSNR and SSIM are computed through `IPPy.utilities.metrics`.
-- Generated model weights, processed tensors, and full-size figures should remain outside Git unless explicitly needed for final delivery.
+- The project task is sparse-view CT reconstruction on Mayo data.
+- Images are resized to `256 x 256`.
+- The view counts are `180`, `90`, `60`, and `45`.
+- The measurement noise level is `0.005`.
+- The main metrics are PSNR and SSIM.
+- The processed sinograms created by notebook `00` are the shared degraded inputs for TpV and ResUNet.
+- DiffPIR currently regenerates its sparse-view measurements inside notebook `03`.
+- For final reporting, state clearly which notebook generated each result and whether it used the shared `processed2/` data contract.
