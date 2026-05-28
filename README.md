@@ -22,9 +22,9 @@ Use Google Colab as the execution environment.
 
 The notebooks contain absolute Colab/Drive paths. If your Drive folder names differ, update those constants before executing any cell that loads data, imports `IPPy`, or saves checkpoints/outputs.
 
-## Main Drive Layout for Notebooks 00, 01, 02, and 04
+## Main Drive Layout for Notebooks 00, 01, and 02
 
-The notebooks `00_data_and_degradation.ipynb`, `01_TpV_reconstruction.ipynb`, `02_ResUnet_reconstruction.ipynb`, and `04_results_comparison.ipynb` assume this project root:
+The notebooks `00_data_and_degradation.ipynb`, `01_TpV_reconstruction.ipynb`, and `02_ResUnet_reconstruction.ipynb` assume this project root:
 
 ```text
 /content/drive/MyDrive/LM_INFORMATICA/COMPUTATIONAL_IMAGING/
@@ -57,6 +57,32 @@ Mayo2/<split>/<patient>/*.png
 ```
 
 where `<split>` is one of `train`, `val`, or `test`.
+
+## Final Comparison Drive Layout
+
+`04_results_comparison.ipynb` currently uses a different Drive root:
+
+```text
+/content/drive/MyDrive/COMPUTATIONAL_IMAGING/
+```
+
+It expects the already generated processed data, TpV parameters, ResUNet checkpoints, and comparison output directory under:
+
+```text
+COMPUTATIONAL_IMAGING/
+├── IPPy/
+├── processed2/
+├── outputs/
+│   ├── tpv/
+│   │   └── tpv_params.json
+│   └── comparison/
+└── weights/
+    └── unet/
+        ├── resunet_generalized_best.pt
+        └── resunet_generalized_latest.pt
+```
+
+If you run notebooks `00`, `01`, and `02` under the `LM_INFORMATICA/COMPUTATIONAL_IMAGING` root, either mirror those generated files into `/content/drive/MyDrive/COMPUTATIONAL_IMAGING/` before running notebook `04`, or edit `PROJECT_ROOT` in notebook `04` to the same root used by notebooks `00`, `01`, and `02`.
 
 ## DiffPIR Drive Layout
 
@@ -283,6 +309,7 @@ Common generated outputs are:
 processed2/
 outputs/tpv/
 outputs/unet/
+outputs/diffpir/
 outputs/comparison/
 weights/unet/
 weights/DiffPir*.pth
@@ -290,6 +317,8 @@ weights/DiffPir.ckpt
 ```
 
 These files can be large and are not intended to be managed manually through the repository. Keep them in Drive and treat the repository as the source for notebooks, documentation, and final project materials.
+
+Note that `03_DiffPir_reconstruction.ipynb` displays DiffPIR figures inline and prints aggregate metrics. The `outputs/diffpir/` figures included in this repository are exported project artifacts, not files automatically written by the current notebook unless you add explicit save calls.
 
 Model weights are available separately at:
 
@@ -329,4 +358,5 @@ The exact variable names differ by notebook. They are defined near the beginning
 - The main metrics are PSNR and SSIM.
 - The processed sinograms created by notebook `00` are the shared degraded inputs for TpV and ResUNet.
 - DiffPIR currently regenerates its sparse-view measurements inside notebook `03`.
+- Detector-size handling is not uniform across all notebooks: notebook `00` writes `detector_size = 512` into the processed-data manifest, notebook `04` reads that manifest value, while notebooks `01` and `02` currently instantiate their reconstruction/FBP projectors with `DETECTOR_SIZE = 256`. Check and align these values if you need a strictly identical CT geometry across every stage.
 - For final reporting, state clearly which notebook generated each result and whether it used the shared `processed2/` data contract.
