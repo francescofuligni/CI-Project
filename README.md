@@ -352,4 +352,3 @@ The exact variable names differ by notebook. They are defined near the beginning
 - The view counts are `180`, `90`, `60`, and `45`.
 - The measurement noise level is `0.005`.
 - The main metrics are PSNR and SSIM.
-- The processed sinograms created by notebook `00` are the shared degraded inputs for TpV and ResUNet.
