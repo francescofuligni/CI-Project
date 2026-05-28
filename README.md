@@ -353,4 +353,3 @@ The exact variable names differ by notebook. They are defined near the beginning
 - The measurement noise level is `0.005`.
 - The main metrics are PSNR and SSIM.
 - The processed sinograms created by notebook `00` are the shared degraded inputs for TpV and ResUNet.
-- For final reporting, state clearly which notebook generated each result and whether it used the shared `processed2/` data contract.
