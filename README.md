@@ -183,8 +183,6 @@ To evaluate DiffPIR without retraining, you need:
 weights/DiffPir_best.pth
 ```
 
-If that file is missing, `03_DiffPir_reconstruction.ipynb` must train or resume the diffusion model from the available DiffPIR checkpoint files.
-
 The trained model weights are not stored in this repository. They can be downloaded from the shared Google Drive folder:
 
 ```text
@@ -318,8 +316,6 @@ weights/DiffPir.ckpt
 
 These files can be large and are not intended to be managed manually through the repository. Keep them in Drive and treat the repository as the source for notebooks, documentation, and final project materials.
 
-Note that `03_DiffPir_reconstruction.ipynb` displays DiffPIR figures inline and prints aggregate metrics. The `outputs/diffpir/` figures included in this repository are exported project artifacts, not files automatically written by the current notebook unless you add explicit save calls.
-
 Model weights are available separately at:
 
 ```text
@@ -357,6 +353,4 @@ The exact variable names differ by notebook. They are defined near the beginning
 - The measurement noise level is `0.005`.
 - The main metrics are PSNR and SSIM.
 - The processed sinograms created by notebook `00` are the shared degraded inputs for TpV and ResUNet.
-- DiffPIR currently regenerates its sparse-view measurements inside notebook `03`.
-- Detector-size handling is not uniform across all notebooks: notebook `00` writes `detector_size = 512` into the processed-data manifest, notebook `04` reads that manifest value, while notebooks `01` and `02` currently instantiate their reconstruction/FBP projectors with `DETECTOR_SIZE = 256`. Check and align these values if you need a strictly identical CT geometry across every stage.
 - For final reporting, state clearly which notebook generated each result and whether it used the shared `processed2/` data contract.
