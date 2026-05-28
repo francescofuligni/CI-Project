@@ -1,0 +1,115 @@
+{
+  "tpv_params": {
+    "lmbda": 0.316,
+    "p": 0.35,
+    "maxiter": 250,
+    "tolf": 0.0001,
+    "tolx": 0.0001
+  },
+  "resunet_checkpoint": "/content/drive/MyDrive/LM_INFORMATICA/COMPUTATIONAL_IMAGING/weights/unet/resunet_generalized_best.pt",
+  "max_test_slices_per_patient": 50,
+  "num_test_slices": 50,
+  "num_views": 4,
+  "summary": [
+    {
+      "scope": "overall",
+      "views": "all",
+      "method": "TpV",
+      "num_images": 200,
+      "mean_psnr": 29.05637065028371,
+      "std_psnr": 1.011739220154692,
+      "mean_ssim": 0.7910509430215222,
+      "std_ssim": 0.019943056580412833
+    },
+    {
+      "scope": "per_view",
+      "views": 180,
+      "method": "TpV",
+      "num_images": 50,
+      "mean_psnr": 29.859537124634816,
+      "std_psnr": 0.5111326008234597,
+      "mean_ssim": 0.8012750615071189,
+      "std_ssim": 0.017656124258380635
+    },
+    {
+      "scope": "per_view",
+      "views": 90,
+      "method": "TpV",
+      "num_images": 50,
+      "mean_psnr": 29.560184033477803,
+      "std_psnr": 0.5925248094438579,
+      "mean_ssim": 0.8061568181887391,
+      "std_ssim": 0.009540040865796342
+    },
+    {
+      "scope": "per_view",
+      "views": 60,
+      "method": "TpV",
+      "num_images": 50,
+      "mean_psnr": 28.780082934674446,
+      "std_psnr": 0.8655699958695147,
+      "mean_ssim": 0.7903102711221809,
+      "std_ssim": 0.009968228445415103
+    },
+    {
+      "scope": "per_view",
+      "views": 45,
+      "method": "TpV",
+      "num_images": 50,
+      "mean_psnr": 28.02567850834778,
+      "std_psnr": 0.8338740260759986,
+      "mean_ssim": 0.7664616212680503,
+      "std_ssim": 0.012283400940149245
+    },
+    {
+      "scope": "overall",
+      "views": "all",
+      "method": "ResUNet",
+      "num_images": 200,
+      "mean_psnr": 28.095558606543527,
+      "std_psnr": 1.0934759872354725,
+      "mean_ssim": 0.8091487591388349,
+      "std_ssim": 0.0367160868918027
+    },
+    {
+      "scope": "per_view",
+      "views": 180,
+      "method": "ResUNet",
+      "num_images": 50,
+      "mean_psnr": 26.920634812614836,
+      "std_psnr": 0.6336546924232397,
+      "mean_ssim": 0.7859604681279734,
+      "std_ssim": 0.03234053762563059
+    },
+    {
+      "scope": "per_view",
+      "views": 90,
+      "method": "ResUNet",
+      "num_images": 50,
+      "mean_psnr": 27.94377548463116,
+      "std_psnr": 0.6653426448795133,
+      "mean_ssim": 0.8126539095136011,
+      "std_ssim": 0.024083501555625955
+    },
+    {
+      "scope": "per_view",
+      "views": 60,
+      "method": "ResUNet",
+      "num_images": 50,
+      "mean_psnr": 29.058252904877556,
+      "std_psnr": 0.6462067243976014,
+      "mean_ssim": 0.8475125744688015,
+      "std_ssim": 0.02115361220997915
+    },
+    {
+      "scope": "per_view",
+      "views": 45,
+      "method": "ResUNet",
+      "num_images": 50,
+      "mean_psnr": 28.459571224050556,
+      "std_psnr": 1.0286919695778751,
+      "mean_ssim": 0.7904680844449636,
+      "std_ssim": 0.0307920535709562
+    }
+  ]
+}
